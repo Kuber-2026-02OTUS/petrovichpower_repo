@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-server-deployment
+  labels:
+    app: web-server
+spec:
+  replicas: 3
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1  
+      maxSurge: 1        
+  selector:
+    matchLabels:
+      app: web-server
+  template:
+    metadata:
+      labels:
+        app: web-server
+    spec:
+     
+      nodeSelector:
+        homework: "true"
+      
+      
+      initContainers:
+      - name: init-generator
+        image: busybox
+        command: ['sh', '-c', 'echo "Hello from init container" > /init/index.html']
+        volumeMounts:
+        - name: shared-data
+          mountPath: /init
+
+    
+      containers:
+      - name: web-server
+        image: python:3.9-slim
+        command: ["python3", "-m", "http.server", "8000", "--directory", "/homework"]
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: shared-data
+          mountPath: /homework
+        
+     
+        readinessProbe:
+          exec:
+            command:
+            - test -f "/homework/index.html"
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        
+      
+        lifecycle:
+          preStop:
+            exec:
+              command: ["rm", "/homework/index.html"]
+
+      volumes:
+      - name: shared-data
+        emptyDir: {}
