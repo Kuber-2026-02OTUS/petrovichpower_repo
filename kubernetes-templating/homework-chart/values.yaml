@@ -1,0 +1,30 @@
+replicaCount: 2
+containerName: web-app-container
+pvcName: homework-pvc
+
+image:
+  repository: python
+  tag: "3.9-slim"
+
+# Команда для запуска (теперь в формате списка для шаблона)
+command: ["python3", "-m", "http.server", "8000", "--directory", "/homework"]
+
+service:
+  type: NodePort
+  port: 80
+  targetPort: 8000
+  nodePort: 30082
+
+probes:
+  enabled: true 
+
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7.2.4"
+    pullPolicy: IfNotPresent
+  usePassword: false
+  master:
+    persistence:
+      enabled: false

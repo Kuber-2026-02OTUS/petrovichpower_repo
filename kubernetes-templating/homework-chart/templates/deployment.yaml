@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # Используем стандартный хелпер для имени, чтобы избежать конфликтов
+  name: {{ include "homework-chart.fullname" . }}
+  labels:
+    {{- include "homework-chart.labels" . | nindent 4 }}
+spec:
+  # Берем количество реплик из values.yaml
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "homework-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "homework-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      # Важно: сервис-аккаунт для метрик (из прошлого ДЗ)
+      serviceAccountName: monitoring
+      # Если твои ноды в bare-metal помечены, оставь это:
+      nodeSelector:
+        homework: "true"
+      
+      initContainers:
+        - name: init-generator
+          image: curlimages/curl:latest
+          command: ['sh', '-c']
+          args:
+            - |
+              curl -k -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+              https://kubernetes.default.svc/metrics > /homework/metrics.html
+          volumeMounts:
+            - name: shared-data
+              mountPath: "/homework"
+
+      containers:
+        - name: {{ .Values.containerName }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          # Команда теперь тоже берется из values.yaml
+          command: {{ .Values.command | toJson }}
+          ports:
+            - containerPort: 8000
+          
+          # Добавляем условие для проб из values.yaml (по ТЗ)
+          {{- if .Values.probes.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /metrics.html
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          {{- end }}
+
+          volumeMounts:
+            - name: shared-data
+              mountPath: /homework
+            - name: config-volume
+              mountPath: /homework/conf
+
+      volumes:
+        - name: shared-data
+          persistentVolumeClaim:
+            # Имя PVC теперь гибкое
+            claimName: {{ .Values.pvcName }}
+        - name: config-volume
+          configMap:
+            # Имя ConfigMap (создай его отдельно или параметризуй)
+            name: homework-config
