@@ -1,0 +1,8 @@
+Ваше приложение установлено!
+Адрес сервиса:
+  http://{{ .Values.nodeIP | default "192.168.100.51" }}:{{ .Values.service.nodePort }}/metrics.html
+
+
+{{- if .Values.redis.enabled }}
+Redis также запущен внутри кластера.
+{{- end }}
