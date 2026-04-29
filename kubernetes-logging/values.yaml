@@ -1,0 +1,34 @@
+loki:
+  nodeSelector:
+    node-role: "infra"
+  tolerations:
+    - key: "node-role"
+      operator: "Equal"
+      value: "infra"
+      effect: "NoSchedule"
+  auth_enabled: false
+
+serviceAccount:
+  create: true
+  annotations:
+    yandex.cloud/service-account-id: "YCAJESUgr-5lkf--T3BtNSKjd"
+
+grafana:
+  enabled: true
+  nodeSelector:
+    node-role: "infra"
+  tolerations:
+    - key: "node-role"
+      operator: "Equal"
+      value: "infra"
+      effect: "NoSchedule"
+  service:
+    type: LoadBalancer
+
+promtail:
+  enabled: true
+  tolerations:
+    - key: "node-role"
+      operator: "Equal"
+      value: "infra"
+      effect: "NoSchedule"
