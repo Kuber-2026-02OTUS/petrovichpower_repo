@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: s3-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany # Позволяет монтировать нескольким подам
+  storageClassName: yc-s3-storage-class
+  resources:
+    requests:
+      storage: 5Gi # Для S3 размер виртуальный, но поле обязательное
