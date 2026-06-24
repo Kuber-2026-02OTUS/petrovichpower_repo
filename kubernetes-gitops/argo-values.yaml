@@ -1,0 +1,38 @@
+global:
+  tolerations:
+    - key: "node-role"
+      operator: "Equal"
+      value: "infra"
+      effect: "NoSchedule"
+  nodeSelector:
+    node-role: "infra"
+
+controller:
+  nodeSelector: { node-role: "infra" }
+  tolerations: [{ key: "node-role", operator: "Equal", value: "infra", effect: "NoSchedule" }]
+
+dex:
+  nodeSelector: { node-role: "infra" }
+  tolerations: [{ key: "node-role", operator: "Equal", value: "infra", effect: "NoSchedule" }]
+
+redis:
+  nodeSelector: { node-role: "infra" }
+  tolerations: [{ key: "node-role", operator: "Equal", value: "infra", effect: "NoSchedule" }]
+
+server:
+  nodeSelector: { node-role: "infra" }
+  tolerations: [{ key: "node-role", operator: "Equal", value: "infra", effect: "NoSchedule" }]
+
+repoServer:
+  nodeSelector: { node-role: "infra" }
+  tolerations: [{ key: "node-role", operator: "Equal", value: "infra", effect: "NoSchedule" }]
+
+applicationSet:
+  nodeSelector: { node-role: "infra" }
+  tolerations: [{ key: "node-role", operator: "Equal", value: "infra", effect: "NoSchedule" }]
+
+configs:
+  secret:
+    createSecretJob:
+      nodeSelector: { node-role: "infra" }
+      tolerations: [{ key: "node-role", operator: "Equal", value: "infra", effect: "NoSchedule" }]
