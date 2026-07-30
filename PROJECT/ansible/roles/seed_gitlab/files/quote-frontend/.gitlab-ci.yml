@@ -1,0 +1,43 @@
+stages:
+  - build-jar
+  - build-image
+  - deploy
+
+# 1. Сборка JAR через Maven
+build-jar-job:
+  stage: build-jar
+  image: maven:3.9-eclipse-temurin-17
+  script:
+    - mvn clean package -DskipTests
+  artifacts:
+    paths:
+      - target/*.jar
+
+# 2. Сборка Docker-образа через Kaniko
+build-docker-job:
+  stage: build-image
+  image:
+    name: gcr.io/kaniko-project/executor:v1.14.0-debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - AUTH=$(echo -n "${NEXUS_USER}:${NEXUS_PASSWORD}" | base64 | tr -d '\n')
+    - echo "{\"auths\":{\"registry.petrovich-power.site\":{\"auth\":\"${AUTH}\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "registry.petrovich-power.site/${CI_PROJECT_NAME}:${CI_COMMIT_SHORT_SHA}"
+      --destination "registry.petrovich-power.site/${CI_PROJECT_NAME}:latest"
+
+# 3. Пуш Helm-чарта в Nexus
+helm-job:
+  stage: deploy
+  image: alpine/helm:3.12.0
+  script:
+    - helm package chart/ --version 1.0.$CI_PIPELINE_IID
+    - ARCHIVE_FILE=$(ls *.tgz)
+    - echo "Uploading $ARCHIVE_FILE to Nexus..."
+    - >
+      curl -u "${NEXUS_USER}:${NEXUS_PASSWORD}" 
+      --upload-file "$ARCHIVE_FILE" 
+      "https://nexus.petrovich-power.site/repository/helm-hosted/$ARCHIVE_FILE"

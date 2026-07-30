@@ -1,0 +1,26 @@
+---
+domain: "domain"
+
+# Сетевые IP 
+bastion_ip: "10.128.0.18"
+gitlab_ip: "10.128.0.35"
+nexus_ip: "10.128.0.19"
+postgres_ip: "10.128.0.38"
+worker_ip: "10.128.0.13"
+
+# NodePort порты в K8s
+nodeports:
+  argocd: 32253
+  quotes_backend: 30170
+  quotes_frontend: 31169
+  grafana: 31519
+  prometheus: 30090
+
+# GitLab Runner
+gitlab_url: "gitlab_url"
+gitlab_runner_token: "gitlab_runner_token"
+
+# Nexus Credentials для Argo CD
+nexus_repo_url: "nexus_repo_url"
+nexus_user: "nexus_user"
+nexus_password: "nexus_password"

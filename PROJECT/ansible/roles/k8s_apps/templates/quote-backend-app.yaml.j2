@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: quote-backend
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: quote-backend=registry.{{ domain }}/quote-backend:latest
+    argocd-image-updater.argoproj.io/quote-backend.update-strategy: latest
+spec:
+  project: default
+  source:
+    repoURL: '{{ nexus_repo_url }}'
+    chart: quote-backend
+    targetRevision: 1.0.18
+    helm:
+      parameters:
+        - name: image.repository
+          value: registry.{{ domain }}/backend
+        - name: image.tag
+          value: 54ad89e1
+        - name: service.type
+          value: "NodePort"
+        - name: service.nodePort
+          value: "{{ nodeports.quotes_backend }}"
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

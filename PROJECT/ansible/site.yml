@@ -1,0 +1,50 @@
+---
+- name: 1. Базовая подготовка нод Kubernetes
+  hosts: k8s
+  become: true
+  roles:
+    - k8s_base
+
+- name: 2. Инициализация Первого Мастера K8s
+  hosts: masters[0]
+  become: true
+  roles:
+    - k8s_control_plane
+
+- name: 3. Подключение остальных мастеров и воркеров
+  hosts: masters[1:]:workers
+  become: true
+  roles:
+    - k8s_node
+
+- name: 4. Развертывание Docker-сервисов (GitLab & Nexus)
+  hosts: gitlab_server, nexus_server
+  become: true
+  roles:
+    - external_docker
+
+- name: 5. Развертывание PostgreSQL
+  hosts: postgres_server
+  become: true
+  roles:
+    - external_postgres
+
+- name: 6. Настройка Бастиона (Nginx SSL Reverse Proxy)
+  hosts: bastion
+  become: true
+  roles:
+    - bastion
+
+- name: 7. Деплой платформенных сервисов в K8s (Helm, Argo CD, Monitoring, Runner)
+  hosts: masters[0]
+  become: false
+  roles:
+    - k8s_apps
+
+    # ... Ваши предыдущие сценарии (k8s_base, bastion, external_docker и т.д.) ...
+
+- name: 8. Загрузка исходного кода приложений в GitLab
+  hosts: bastion  # или localhost (любой хост, у которого есть доступ к gitlab.petrovich-power.site)
+  become: false
+  roles:
+    - seed_gitlab

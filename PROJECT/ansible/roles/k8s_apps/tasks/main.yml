@@ -1,0 +1,110 @@
+---
+# 1. Подготовка Helm
+- name: Установка Helm CLI
+  become: true
+  shell: |
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Добавление Helm репозиториев
+  kubernetes.core.helm_repository:
+    name: "{{ item.name }}"
+    repo_url: "{{ item.url }}"
+  loop:
+    - { name: 'ingress-nginx', url: 'https://kubernetes.github.io/ingress-nginx' }
+    - { name: 'argo', url: 'https://argoproj.github.io/argo-helm' }
+    - { name: 'gitlab', url: 'https://charts.gitlab.io/' }
+    - { name: 'prometheus-community', url: 'https://prometheus-community.github.io/helm-charts' }
+    - { name: 'grafana', url: 'https://grafana.github.io/helm-charts' }
+
+# 2. Установка Ingress Nginx
+- name: Установка Ingress Nginx
+  kubernetes.core.helm:
+    name: ingress-nginx
+    chart_ref: ingress-nginx/ingress-nginx
+    release_namespace: ingress-nginx
+    create_namespace: true
+
+# 3. Установка Argo CD
+- name: Установка Argo CD
+  kubernetes.core.helm:
+    name: argocd
+    chart_ref: argo/argo-cd
+    release_namespace: argocd
+    create_namespace: true
+
+# 4. Установка Observability Stack (Prometheus + Grafana + Loki + Promtail)
+- name: Установка kube-prometheus-stack
+  kubernetes.core.helm:
+    name: kube-prometheus-stack
+    chart_ref: prometheus-community/kube-prometheus-stack
+    release_namespace: monitoring
+    create_namespace: true
+    values:
+      prometheus:
+        service:
+          type: NodePort
+          nodePort: "{{ nodeports.prometheus }}"
+      grafana:
+        service:
+          type: NodePort
+          nodePort: "{{ nodeports.grafana }}"
+
+- name: Установка Loki (Logs)
+  kubernetes.core.helm:
+    name: loki
+    chart_ref: grafana/loki-stack
+    release_namespace: monitoring
+
+# 5. Установка GitLab Runner с вашим токеном
+- name: Установка GitLab Runner
+  kubernetes.core.helm:
+    name: gitlab-runner
+    chart_ref: gitlab/gitlab-runner
+    release_namespace: gitlab-runner
+    create_namespace: true
+    values:
+      gitlabUrl: "{{ gitlab_url }}"
+      runnerToken: "{{ gitlab_runner_token }}"
+      rbac:
+        create: true
+      runners:
+        config: |
+          [[runners]]
+            [runners.kubernetes]
+              namespace = "gitlab-runner"
+              image = "ubuntu:22.04"
+              privileged = true
+              cpu_request = "200m"
+              memory_request = "512Mi"
+              cpu_limit = "1000m"
+              memory_limit = "2Gi"
+
+# 6. Регистрация Nexus в Argo CD (как Helm Repo)
+- name: Подключение Nexus Repository к Argo CD
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: nexus-helm-repo
+        namespace: argocd
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      stringData:
+        name: nexus-helm
+        type: helm
+        url: "{{ nexus_repo_url }}"
+        username: "{{ nexus_user }}"
+        password: "{{ nexus_password }}"
+
+# 7. Применение Argo CD Applications
+- name: Деплой Argo CD Приложений (Quote Backend & Frontend)
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ item }}"
+  loop:
+    - "{{ lookup('template', 'quote-backend-app.yaml.j2') | from_yaml }}"
+    - "{{ lookup('template', 'quote-frontend-app.yaml.j2') | from_yaml }}"

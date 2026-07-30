@@ -1,0 +1,27 @@
+---
+# 1. Ждем до 5 минут, пока GitLab поднимется и станет отвечать 200 OK
+- name: Ожидание полной готовности GitLab
+  ansible.builtin.uri:
+    url: "https://gitlab.petrovich-power.site/users/sign_in"
+    status_code: 200
+    validate_certs: false
+  register: gitlab_check
+  until: gitlab_check.status == 200
+  retries: 30
+  delay: 10
+
+# 2. Устанавливаем git на локальной машине/бастионе, если его нет
+- name: Проверка наличия Git
+  ansible.builtin.package:
+    name: git
+    state: present
+  become: true
+
+# 3. Запускаем цикл импорта приложений (бэкенд и фронтенд)
+- name: Импорт проектов в GitLab
+  include_tasks: push_app.yml
+  loop:
+    - name: "quote-backend"
+    - name: "quote-frontend"
+  loop_control:
+    loop_var: app

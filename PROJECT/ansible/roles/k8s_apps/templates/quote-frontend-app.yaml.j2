@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: quote-frontend
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: quote-frontend=registry.{{ domain }}/quote-frontend:latest
+    argocd-image-updater.argoproj.io/quote-frontend.update-strategy: latest
+spec:
+  project: default
+  source:
+    repoURL: '{{ nexus_repo_url }}'
+    chart: quote-frontend
+    targetRevision: 1.0.25
+    helm:
+      parameters:
+        - name: image.repository
+          value: "registry.{{ domain }}/quote-frontend"
+        - name: env.backendUrl
+          value: "/api/v1/quotes/random"
+        - name: service.type
+          value: "NodePort"
+        - name: service.nodePort
+          value: "{{ nodeports.quotes_frontend }}"
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
