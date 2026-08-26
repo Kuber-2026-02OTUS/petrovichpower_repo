@@ -1,0 +1,6 @@
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+local   all             all                                     peer
+host    all             all             127.0.0.1/32            md5
+host    all             all             ::1/128                 md5
+# Разрешаем подключение к quotes_db из подсети Kubernetes-кластера
+host    {{ db_name }}     {{ db_user }}     {{ k8s_subnet }}         md5

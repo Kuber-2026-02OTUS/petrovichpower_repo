@@ -1,0 +1,63 @@
+- name: Проверка, инициализирован ли уже кластер
+  ansible.builtin.stat:
+    path: /etc/kubernetes/admin.conf
+  register: k8s_init_check
+
+- name: Инициализация первого Master (kubeadm init)
+  ansible.builtin.command: >
+    kubeadm init
+    --control-plane-endpoint="{{ hostvars['bastion_host']['ansible_host'] }}:6443"
+    --upload-certs
+    --pod-network-cidr=10.244.0.0/16
+  when: not k8s_init_check.stat.exists
+  register: kubeadm_init_output
+
+- name: Создание папки .kube для пользователя ubuntu
+  ansible.builtin.file:
+    path: /home/ubuntu/.kube
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+
+- name: Копирование admin.conf в .kube/config
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/ubuntu/.kube/config
+    remote_src: true
+    owner: ubuntu
+    group: ubuntu
+    mode: '0600'
+
+# Установка сетевого плагина Calico
+- name: Установка CNI Flannel / Calico
+  ansible.builtin.command: >
+    kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  when: not k8s_init_check.stat.exists
+
+# Генерация команд подключения для других нод
+- name: Получение команды join для Worker нод
+  ansible.builtin.command: kubeadm token create --print-join-command
+  register: worker_join_cmd
+
+- name: Сохранение команды подключения Worker в факт
+  ansible.builtin.set_fact:
+    k8s_worker_join_command: "{{ worker_join_cmd.stdout }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  loop: "{{ groups['all'] }}"
+
+- name: Генерация ключа сертификата для дополнительных Мастеров
+  ansible.builtin.command: kubeadm init phase upload-certs --upload-certs
+  register: cert_key_output
+  when: "'k8s_masters' in groups and groups['k8s_masters'] | length > 1"
+
+- name: Сохранение команды подключения для дополнительных Мастеров
+  ansible.builtin.set_fact:
+    k8s_master_join_command: "{{ worker_join_cmd.stdout }} --control-plane --certificate-key {{ cert_key_output.stdout_lines[-1] }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  loop: "{{ groups['all'] }}"
+  when: "'k8s_masters' in groups and groups['k8s_masters'] | length > 1"

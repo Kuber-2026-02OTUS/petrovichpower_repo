@@ -1,0 +1,47 @@
+---
+- name: Установка PostgreSQL и Python-библиотеки для работы с DB
+  apt:
+    name:
+      - postgresql
+      - postgresql-contrib
+      - python3-psycopg2
+    state: present
+    update_cache: true
+
+- name: Копирование конфигурации listen_addresses (postgresql.conf)
+  template:
+    src: postgresql.conf.j2
+    dest: /etc/postgresql/14/main/postgresql.conf
+    owner: postgres
+    group: postgres
+    mode: '0644'
+  notify: Restart postgresql
+
+- name: Настройка правил доступа pg_hba.conf
+  template:
+    src: pg_hba.conf.j2
+    dest: /etc/postgresql/14/main/pg_hba.conf
+    owner: postgres
+    group: postgres
+    mode: '0640'
+  notify: Restart postgresql
+
+- name: Старт и включение автозапуска PostgreSQL
+  systemd:
+    name: postgresql
+    state: started
+    enabled: true
+
+- name: Создание пользователя базы данных
+  community.postgresql.postgresql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    state: present
+  become_user: postgres
+
+- name: Создание базы данных quotes_db
+  community.postgresql.postgresql_db:
+    name: "{{ db_name }}"
+    owner: "{{ db_user }}"
+    state: present
+  become_user: postgres

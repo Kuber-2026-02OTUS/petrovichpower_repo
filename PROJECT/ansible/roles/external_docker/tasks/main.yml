@@ -1,0 +1,50 @@
+---
+- name: Установка системных зависимостей и Docker
+  apt:
+    name: "{{ docker_packages }}"
+    state: present
+    update_cache: true
+
+- name: Запуск и включение службы Docker
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Создание каталогов под сервисы
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /opt/gitlab
+    - /opt/nexus
+
+- name: Запуск контейнера Sonatype Nexus
+  community.docker.docker_container:
+    name: nexus
+    image: sonatype/nexus3:latest
+    state: started
+    restart_policy: always
+    published_ports:
+      - "{{ nexus_port }}:8081"
+    volumes:
+      - /opt/nexus:/nexus-data
+
+- name: Запуск контейнера GitLab CE
+  community.docker.docker_container:
+    name: gitlab
+    image: gitlab/gitlab-ce:latest
+    state: started
+    restart_policy: always
+    env:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url '{{ gitlab_external_url }}'
+    published_ports:
+      - "80:80"
+      - "443:443"
+      - "2222:22"
+    volumes:
+      - /opt/gitlab/config:/etc/gitlab
+      - /opt/gitlab/logs:/var/log/gitlab
+      - /opt/gitlab/data:/var/opt/gitlab

@@ -1,0 +1,54 @@
+---
+- name: Установка Nginx и Certbot
+  apt:
+    name:
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+    state: present
+    update_cache: true
+
+- name: Создание каталога под acme-challenge для Certbot
+  file:
+    path: /var/www/certbot
+    state: directory
+    mode: '0755'
+
+- name: Удаление виртуального хоста по умолчанию
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+- name: Выпуск SSL-сертификата Certbot (если еще не создан)
+  command: >
+    certbot certonly --webroot
+    -w /var/www/certbot
+    -d {{ domain_name }}
+    --email {{ certbot_admin_email }}
+    --agree-tos
+    --non-interactive
+  args:
+    creates: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+
+- name: Развертывание конфигурации виртуального хоста Nginx
+  template:
+    src: quotes.conf.j2
+    dest: "/etc/nginx/sites-available/{{ domain_name }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload nginx
+
+- name: Активация конфигурации сайта
+  file:
+    src: "/etc/nginx/sites-available/{{ domain_name }}.conf"
+    dest: "/etc/nginx/sites-enabled/{{ domain_name }}.conf"
+    state: link
+  notify: Reload nginx
+
+- name: Запуск и включение Nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: true

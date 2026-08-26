@@ -1,0 +1,5 @@
+---
+db_name: "quotes_db"
+db_user: "quotes_user"
+db_password: "quotes_password_secure"
+k8s_subnet: "10.128.0.0/16"

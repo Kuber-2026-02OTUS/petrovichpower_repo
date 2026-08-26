@@ -1,0 +1,6 @@
+---
+domain_name: "quotes.petrovich-power.site"
+k8s_node_ip: "10.128.0.13"
+frontend_nodeport: 31169
+backend_nodeport: 30170
+certbot_admin_email: "admin@petrovich-power.site"

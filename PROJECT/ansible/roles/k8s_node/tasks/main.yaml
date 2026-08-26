@@ -1,0 +1,21 @@
+---
+- name: Проверка, входит ли нода уже в кластер
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: node_joined_check
+
+# 1. Присоединение дополнительных МАСТЕРОВ (master-2, master-3)
+- name: Присоединение Control Plane ноды к кластеру
+  ansible.builtin.command: "{{ k8s_master_join_command }}"
+  when: 
+    - not node_joined_check.stat.exists
+    - inventory_hostname in groups['k8s_masters']
+    - k8s_master_join_command is defined
+
+# 2. Присоединение ВОРКЕРОВ (worker-1, worker-2)
+- name: Присоединение Worker ноды к кластеру
+  ansible.builtin.command: "{{ k8s_worker_join_command }}"
+  when: 
+    - not node_joined_check.stat.exists
+    - inventory_hostname in groups['k8s_workers']
+    - k8s_worker_join_command is defined
