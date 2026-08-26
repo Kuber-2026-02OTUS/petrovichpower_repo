@@ -1,0 +1,53 @@
+- name: 1. Базовая подготовка всех нод Kubernetes
+  hosts: k8s
+  become: true
+  roles:
+    - k8s_base
+
+- name: 2. Инициализация Первого Мастера (master-1)
+  hosts: master-1
+  become: true
+  roles:
+    - k8s_control_plane
+
+- name: 3. Присоединение остальных Мастеров (master-2, master-3)
+  hosts: k8s_masters[1:]  # Берет группы из k8s_masters, пропуская первый элемент (master-1)
+  become: true
+  roles:
+    - k8s_node            # Роль присоединения дополнительного control-plane
+
+- name: 4. Присоединение Воркеров (worker-1, worker-2)
+  hosts: k8s_workers      # Точное имя группы из inventory.ini
+  become: true
+  roles:
+    - k8s_node            # Роль присоединения worker-нод
+
+- name: 5. Развертывание Docker-сервисов (GitLab & Nexus)
+  hosts: external_docker  # Используем имя группы из inventory.ini вместо гибрида
+  become: true
+  roles:
+    - external_docker
+
+- name: 6. Развертывание PostgreSQL
+  hosts: external_postgres
+  become: true
+  roles:
+    - external_postgres
+
+- name: 7. Настройка Бастиона (Nginx SSL Reverse Proxy)
+  hosts: bastion
+  become: true
+  roles:
+    - bastion
+
+- name: 8. Деплой платформенных сервисов в K8s (Helm, Argo CD, Monitoring, Runner)
+  hosts: master-1         # Достаточно запустить только с первого мастера, где лежит kubectl
+  become: false
+  roles:
+    - k8s_apps
+
+- name: 9. Загрузка исходного кода приложений в GitLab
+  hosts: bastion
+  become: false
+  roles:
+    - seed_gitlab

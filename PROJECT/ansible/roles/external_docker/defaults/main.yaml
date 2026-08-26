@@ -1,0 +1,8 @@
+---
+docker_packages:
+  - docker.io
+  - docker-compose-plugin
+  - python3-pip
+
+gitlab_external_url: "http://gitlab.petrovich-power.site"
+nexus_port: 8081

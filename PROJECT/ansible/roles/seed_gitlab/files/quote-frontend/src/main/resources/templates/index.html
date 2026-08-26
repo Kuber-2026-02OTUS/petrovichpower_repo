@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Цитаты Великих Людей</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .quote-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            padding: 40px;
+            max-width: 650px;
+            width: 90%;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .quote-text {
+            font-size: 1.5rem;
+            font-style: italic;
+            color: #2d3748;
+            margin-bottom: 20px;
+        }
+        .quote-author {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 30px;
+        }
+        .btn-custom {
+            background: #764ba2;
+            color: white;
+            border-radius: 30px;
+            padding: 12px 30px;
+            font-weight: 600;
+            border: none;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .btn-custom:hover {
+            background: #5a377d;
+            color: white;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+<div class="quote-card">
+    <div class="mb-4">
+        <span class="badge bg-secondary">Kubernetes Demo App</span>
+    </div>
+    <div id="quote-box">
+        <p class="quote-text" id="text">Загрузка цитаты...</p>
+        <p class="quote-author" id="author"></p>
+    </div>
+    <button class="btn btn-custom" onclick="fetchQuote()">✨ Новая цитата</button>
+</div>
+
+<script th:inline="javascript">
+    const backendUrl = /*[[${backendUrl}]]*/ '/api/v1/quotes/random';
+
+    async function fetchQuote() {
+        try {
+            const response = await fetch(backendUrl);
+            if (!response.ok) throw new Error('Ошибка сети');
+            const data = await response.json();
+            
+            document.getElementById('text').innerText = `"${data.text}"`;
+            document.getElementById('author').innerText = `— ${data.author}`;
+        } catch (error) {
+            document.getElementById('text').innerText = "Не удалось загрузить цитату. Проверьте соединение с бэкендом.";
+            document.getElementById('author').innerText = "";
+        }
+    }
+
+    // Загрузить цитату при открытии страницы
+    fetchQuote();
+</script>
+
+</body>
+</html>

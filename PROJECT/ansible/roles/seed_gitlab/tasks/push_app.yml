@@ -1,0 +1,38 @@
+---
+# 1. Создаем проект в GitLab через REST API от имени root
+- name: "Создание репозитория {{ app.name }} в GitLab"
+  ansible.builtin.uri:
+    url: "https://gitlab.petrovich-power.site/api/v4/projects"
+    method: POST
+    url_username: "root"
+    url_password: "{{ gitlab_root_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      name: "{{ app.name }}"
+      path: "{{ app.name }}"
+      visibility: "public"
+      initialize_with_readme: "false"
+    status_code: [201, 400] # 400 — если проект уже создан
+    validate_certs: false
+
+# 2. Копируем файлы из role/seed_gitlab/files/ во временную папку
+- name: "Подготовка исходников для {{ app.name }}"
+  ansible.builtin.copy:
+    src: "{{ app.name }}/"
+    dest: "/tmp/seed_code/{{ app.name }}/"
+
+# 3. Делаем git init, commit и push в GitLab
+- name: "Пуш исходного кода {{ app.name }} в GitLab"
+  ansible.builtin.shell: |
+    cd /tmp/seed_code/{{ app.name }}/
+    git init -b main
+    git config user.name "Ansible Automation"
+    git config user.email "ansible@petrovich-power.site"
+    git remote remove origin || true
+    git remote add origin https://root:{{ gitlab_root_password | urlencode }}@gitlab.petrovich-power.site/root/{{ app.name }}.git
+    git add .
+    git commit -m "Initial commit by Ansible" || true
+    git -c http.sslVerify=false push -u origin main --force
+  register: git_push_log
+  changed_when: "'Every-thing up-to-date' not in git_push_log.stderr"

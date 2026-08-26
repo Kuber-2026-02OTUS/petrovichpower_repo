@@ -1,0 +1,43 @@
+stages:
+  - build-jar
+  - build-image
+  - deploy
+
+# 1. Шаг сборки JAR через Maven
+build-jar-job:
+  stage: build-jar
+  image: maven:3.9-eclipse-temurin-17
+  script:
+    - mvn clean package -DskipTests
+  artifacts:
+    paths:
+      - target/*.jar   # Исправлено: путь от корня репозитория
+
+# 2. Шаг сборки Docker-образа через Kaniko
+build-docker-job:
+  stage: build-image
+  image:
+    name: gcr.io/kaniko-project/executor:v1.14.0-debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - AUTH=$(echo -n "${NEXUS_USER}:${NEXUS_PASSWORD}" | base64 | tr -d '\n')
+    - echo "{\"auths\":{\"registry.petrovich-power.site\":{\"auth\":\"${AUTH}\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "registry.petrovich-power.site/${CI_PROJECT_NAME}:${CI_COMMIT_SHORT_SHA}"
+      --destination "registry.petrovich-power.site/${CI_PROJECT_NAME}:latest"
+# 3. Шаг Helm (выполняется только после успешной сборки образа)
+helm-job:
+  stage: deploy
+  image: alpine/helm:3.12.0
+  script:
+    # 1. Упаковываем чарт из папки chart/
+    - helm package chart/ --version 1.0.$CI_PIPELINE_IID
+
+    # 2. Пушим упакованный .tgz архив в Nexus Helm repository
+    - >
+      curl -u "${NEXUS_USER}:${NEXUS_PASSWORD}" 
+      --upload-file quote-backend-1.0.$CI_PIPELINE_IID.tgz 
+      "https://nexus.petrovich-power.site/repository/helm-hosted/quote-backend-1.0.$CI_PIPELINE_IID.tgz"

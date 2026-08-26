@@ -1,0 +1,3 @@
+INSERT INTO quotes (author, text) SELECT 'Стив Джобс', 'Хватайся за любую возможность, создавай своё будущее.' WHERE NOT EXISTS (SELECT 1 FROM quotes WHERE text LIKE 'Хватайся%');
+INSERT INTO quotes (author, text) SELECT 'Альберт Эйнштейн', 'Логика приведет вас из пункта А в пункт Б, а воображение — куда угодно.' WHERE NOT EXISTS (SELECT 1 FROM quotes WHERE text LIKE 'Логика%');
+INSERT INTO quotes (author, text) SELECT 'Линус Торвальдс', 'Разговоры ничего не стоят. Покажите мне код.' WHERE NOT EXISTS (SELECT 1 FROM quotes WHERE text LIKE 'Разговоры%');
